@@ -1,6 +1,6 @@
-# TradeScout: Automated Paper Day-Trading Assistant
+# TradeScout: Automated Paper Day Trading Assistant
 
-TradeScout is an automated day-trading assistant that runs every weekday on an Alpaca paper trading account. Each morning it scans about 5,900 U.S. stocks for long setups, checks the news, SEC filings and social media for the strongest ones, and tests each trade plan with 10,000 simulated sessions before any money is at risk. During the day it watches the chosen stocks bar by bar, buys when a trigger fires, sells everything before the close, and sends an end-of-day report with the profit and loss of every trade.
+TradeScout is an automated day trading assistant that runs every weekday on an Alpaca paper trading account. Each morning it scans about 5,900 U.S. stocks for long setups, checks the news, SEC filings and social media for the strongest ones, and tests each trade plan with 10,000 simulated sessions before any money is at risk. During the day it watches the chosen stocks bar by bar, buys when a trigger fires, sells everything before the close, and sends an end-of-day report with the profit and loss of every trade.
 
 TradeScout also reviews every losing trade, finds out why it lost using real market data, and keeps a journal of lessons. When the same cause shows up in several losses, it becomes a rule that makes the next day's stock selection stricter.
 
