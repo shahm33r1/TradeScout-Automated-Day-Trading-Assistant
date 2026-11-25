@@ -1,0 +1,173 @@
+<title>Paper Trade Journal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a single ledger column — summary strip, the rules the daily run follows, then the trade log, newest first. */
+:root {
+  --bg: #f5f6f8; --surface: #ffffff; --ink: #18212b; --muted: #5d6875; --line: #dde1e6;
+  --accent: #2f55c4; --gain: #11804a; --gain-bg: #e3f4ea; --loss: #b8322a; --loss-bg: #fbe6e4;
+  --watch: #8a5a00; --watch-bg: #fbf0d9;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11161c; --surface: #19212a; --ink: #e6ebf0; --muted: #98a3b0; --line: #2a3440;
+  --accent: #8aa6ff; --gain: #4cc98a; --gain-bg: #163326; --loss: #ff8178; --loss-bg: #3a1d1b;
+  --watch: #f0c060; --watch-bg: #3a2f17; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11161c; --surface: #19212a; --ink: #e6ebf0; --muted: #98a3b0; --line: #2a3440;
+  --accent: #8aa6ff; --gain: #4cc98a; --gain-bg: #163326; --loss: #ff8178; --loss-bg: #3a1d1b;
+  --watch: #f0c060; --watch-bg: #3a2f17; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 28px; }
+header h1 { font-size: 1.6rem; font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+header p { margin: 4px 0 0; color: var(--muted); max-width: 65ch; }
+.label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 500; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line);
+  border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.strip > div { background: var(--surface); padding: 14px 16px; display: grid; gap: 2px; }
+.strip .v { font-family: var(--mono); font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.pos { color: var(--gain); } .neg { color: var(--loss); }
+h2 { font-size: 1.05rem; font-weight: 600; margin: 0 0 10px; }
+section > p.note { margin: -4px 0 12px; color: var(--muted); max-width: 65ch; }
+.rules { display: grid; gap: 8px; }
+.rule { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 4px; min-width: 0; }
+.rule .top { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.rule .title { font-weight: 600; }
+.rule .body { color: var(--ink); }
+.rule .meta { color: var(--muted); font-size: 0.85rem; }
+.pill { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 8px; border-radius: 99px; }
+.pill.active { background: var(--loss-bg); color: var(--loss); }
+.pill.watching { background: var(--watch-bg); color: var(--watch); }
+.pill.retired { background: var(--line); color: var(--muted); }
+.pill.win { background: var(--gain-bg); color: var(--gain); }
+.pill.loss { background: var(--loss-bg); color: var(--loss); }
+.pill.flat { background: var(--line); color: var(--muted); }
+.tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; min-width: 720px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 500; }
+td.r, th.r { text-align: right; }
+tr.analysis td { background: var(--bg); color: var(--ink); font-size: 0.9rem; }
+tr.analysis td strong { font-weight: 600; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.tag { font-family: var(--mono); font-size: 0.75rem; border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--muted); }
+.empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 8px; padding: 18px; color: var(--muted); }
+footer { color: var(--muted); font-size: 0.85rem; max-width: 65ch; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Paper Trade Journal</h1>
+    <p>Every trade the daily run takes on the Alpaca paper account, with a review of each loss. Lessons that keep repeating become rules the next run follows.</p>
+  </header>
+
+  <div class="strip" aria-label="Totals">
+    <div><span class="label">Trades</span><span class="v" id="s-trades">0</span></div>
+    <div><span class="label">Wins / losses</span><span class="v" id="s-wl">0 / 0</span></div>
+    <div><span class="label">Win rate</span><span class="v" id="s-rate">–</span></div>
+    <div><span class="label">Total P&amp;L</span><span class="v" id="s-pnl">$0.00</span></div>
+  </div>
+
+  <section>
+    <h2>Rules the daily run follows</h2>
+    <p class="note">A rule only ever makes the filter stricter. It becomes active once the same cause shows up in 3 losses.</p>
+    <div class="rules" id="active"><div class="empty">No active rules yet. They appear once a pattern repeats across losses.</div></div>
+  </section>
+
+  <section>
+    <h2>Lessons being watched</h2>
+    <p class="note">Causes seen in one or two losses so far. Not rules yet.</p>
+    <div class="rules" id="watching"><div class="empty">Nothing yet. Each losing trade gets a review, and its cause lands here.</div></div>
+  </section>
+
+  <section>
+    <h2>Trades</h2>
+    <div id="trades-empty" class="empty">No trades recorded yet. The daily run adds each one after it closes.</div>
+    <div class="tablewrap" id="trades-wrap" hidden>
+      <table>
+        <thead><tr>
+          <th>Date</th><th>Stock</th><th class="r">Shares</th><th class="r">Buy</th><th class="r">Sell</th>
+          <th>Ended at</th><th class="r">P&amp;L</th><th>Result</th>
+        </tr></thead>
+        <tbody id="trades"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer id="status">Loading the journal…</footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const money = (n) => (n < 0 ? "−$" : "$") + Math.abs(n).toFixed(2);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; };
+const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+
+function renderTrades(docs) {
+  const rows = docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")) || String(b.id).localeCompare(String(a.id)));
+  const tb = $("trades"); tb.replaceChildren();
+  let wins = 0, losses = 0, total = 0;
+  for (const t of rows) {
+    const pnl = num(t.pnl_usd);
+    if (pnl != null) { total += pnl; if (pnl > 0) wins++; else if (pnl < 0) losses++; }
+    const outcome = pnl == null ? "flat" : pnl > 0 ? "win" : pnl < 0 ? "loss" : "flat";
+    const tr = el("tr");
+    tr.append(el("td", "num", t.date || ""), el("td", null, t.symbol || ""),
+      el("td", "r num", t.qty ?? ""),
+      el("td", "r num", num(t.buy_price) != null ? num(t.buy_price).toFixed(2) : ""),
+      el("td", "r num", num(t.sell_price) != null ? num(t.sell_price).toFixed(2) : ""),
+      el("td", null, t.exit_reason || ""));
+    const p = el("td", "r num " + (pnl > 0 ? "pos" : pnl < 0 ? "neg" : ""), pnl == null ? "" : money(pnl) + (num(t.pnl_pct) != null ? "  (" + num(t.pnl_pct).toFixed(2) + "%)" : ""));
+    const r = el("td"); r.append(el("span", "pill " + outcome, outcome));
+    tr.append(p, r); tb.append(tr);
+    if (t.analysis) {
+      const ar = el("tr", "analysis"); const td = el("td"); td.colSpan = 8;
+      td.append(el("strong", null, "Why: "), document.createTextNode(String(t.analysis)));
+      if (Array.isArray(t.causes) && t.causes.length) {
+        const tags = el("div", "tags"); t.causes.forEach(c => tags.append(el("span", "tag", c))); td.append(tags);
+      }
+      ar.append(td); tb.append(ar);
+    }
+  }
+  $("trades-empty").hidden = rows.length > 0; $("trades-wrap").hidden = rows.length === 0;
+  $("s-trades").textContent = rows.length;
+  $("s-wl").textContent = wins + " / " + losses;
+  $("s-rate").textContent = wins + losses ? Math.round(100 * wins / (wins + losses)) + "%" : "–";
+  const s = $("s-pnl"); s.textContent = money(total); s.className = "v " + (total > 0 ? "pos" : total < 0 ? "neg" : "");
+}
+
+function renderLessons(docs) {
+  const all = docs.map(d => ({ id: d.id, ...d.data() }));
+  for (const [box, status, emptyText] of [["active", "active", "No active rules yet. They appear once a pattern repeats across losses."],
+                                           ["watching", "watching", "Nothing yet. Each losing trade gets a review, and its cause lands here."]]) {
+    const list = all.filter(l => l.status === status).sort((a, b) => (num(b.evidence_count) || 0) - (num(a.evidence_count) || 0));
+    const c = $(box); c.replaceChildren();
+    if (!list.length) { c.append(el("div", "empty", emptyText)); continue; }
+    for (const l of list) {
+      const card = el("div", "rule"); const top = el("div", "top");
+      top.append(el("span", "pill " + status, status), el("span", "title", l.title || l.cause || l.id));
+      card.append(top);
+      if (l.rule) card.append(el("div", "body", l.rule));
+      const ids = Array.isArray(l.trade_ids) ? l.trade_ids : [];
+      card.append(el("div", "meta", "Seen in " + (num(l.evidence_count) ?? ids.length) + " loss" + ((num(l.evidence_count) ?? ids.length) === 1 ? "" : "es") + (l.updated ? " · last " + l.updated : "") + (ids.length ? " · " + ids.join(", ") : "")));
+      c.append(card);
+    }
+  }
+}
+
+(async () => {
+  const timer = setTimeout(() => { $("status").textContent = "The journal is taking a while to load. Reopen the page to try again."; }, 10000);
+  const db = await claude.use("db");
+  if (!db) { clearTimeout(timer); $("status").textContent = "Sign in to claude.ai to see the journal."; return; }
+  let got = 0; const done = () => { if (++got >= 2) { clearTimeout(timer); $("status").textContent = "Updated live as the daily run records trades. Paper account only. Not financial advice."; } };
+  const fail = (e) => { clearTimeout(timer); $("status").textContent = "Could not read the journal (" + (e && e.code ? e.code : "error") + "). Reopen the page to try again."; };
+  db.collection("trades").onSnapshot(s => { renderTrades(s.docs); done(); }, fail);
+  db.collection("lessons").onSnapshot(s => { renderLessons(s.docs); done(); }, fail);
+})();
+</script>
