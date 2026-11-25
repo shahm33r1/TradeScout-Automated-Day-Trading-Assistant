@@ -1,0 +1,1 @@
+# TradeScout-Automated-Day-Trading-Assistant
