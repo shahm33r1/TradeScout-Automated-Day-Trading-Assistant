@@ -6,7 +6,12 @@ Every value returned carries where it came from. Known limits, stated plainly:
 - Float: no free source is used, so float is unknown. Shares outstanding (SEC or
   Yahoo) is an upper bound on float, never presented as the float.
 - SEC EDGAR needs a User-Agent with a contact (SEC_USER_AGENT). Without it, SEC
-  checks are skipped and every result says so.
+  checks fall back to Finnhub's filing list when Finnhub is available.
+- Finnhub (optional): profile (shares outstanding, market cap), company news, SEC
+  filing list, insider transactions, earnings calendar. The key is never stored in
+  code: it comes from the environment's network secret for finnhub.io (header
+  X-Finnhub-Token, injected by the proxy) or, for a local test, FINNHUB_API_KEY.
+  Free plans have no intraday candles and no float.
 """
 
 import json
@@ -227,3 +232,96 @@ def _days_between(a, b):
     ta = time.strptime(a[:10], "%Y-%m-%d")
     tb = time.strptime(str(b)[:10], "%Y-%m-%d")
     return abs(int((time.mktime(tb) - time.mktime(ta)) // 86400))
+
+
+# ---------------------------------------------------------------- Finnhub (optional)
+
+FINNHUB = "https://finnhub.io/api/v1"
+_FH = {"ok": None, "why": None}
+
+
+def finnhub(path):
+    """GET a Finnhub path -> parsed JSON, or None when Finnhub is unavailable.
+    The first refusal for a missing or invalid key turns Finnhub off for the run."""
+    if _FH["ok"] is False:
+        return None
+    key = (os.environ.get("FINNHUB_API_KEY") or "").strip() or "proxy-injected"
+    try:
+        text = net.get(FINNHUB + path, headers={"X-Finnhub-Token": key})
+    except Exception as e:
+        _FH["why"] = str(e)
+        if _FH["ok"] is None:
+            _FH["ok"] = False
+        return None
+    try:
+        doc = json.loads(text)
+    except ValueError:
+        return None
+    if isinstance(doc, dict) and doc.get("error"):
+        err = str(doc["error"])
+        if "API key" in err or "token" in err.lower():
+            _FH["ok"], _FH["why"] = False, err
+        return None
+    _FH["ok"] = True
+    return doc
+
+
+def finnhub_status():
+    return {"available": _FH["ok"], "why": _FH["why"]}
+
+
+def fh_profile(sym):
+    d = finnhub("/stock/profile2?symbol=%s" % urllib.parse.quote(sym))
+    if not d or not d.get("ticker"):
+        return None
+    so = d.get("shareOutstanding")        # millions of shares
+    mc = d.get("marketCapitalization")    # millions of dollars
+    return {"name": d.get("name"), "shares_outstanding": int(so * 1e6) if so else None,
+            "market_cap": float(mc) * 1e6 if mc else None, "industry": d.get("finnhubIndustry"),
+            "exchange": d.get("exchange")}
+
+
+def fh_news(sym, today):
+    start = (time.strftime("%Y-%m-%d", time.gmtime(time.mktime(time.strptime(today, "%Y-%m-%d")) - 3 * 86400)))
+    d = finnhub("/company-news?symbol=%s&from=%s&to=%s" % (urllib.parse.quote(sym), start, today))
+    out = []
+    for n in d or []:
+        ts = n.get("datetime")
+        if not ts or not n.get("headline"):
+            continue
+        out.append({"title": n["headline"], "link": n.get("url"), "outlet": n.get("source") or "Finnhub",
+                    "published": time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(int(ts))), "via": "Finnhub"})
+    return out
+
+
+def fh_filings(sym, today, days=180):
+    """[{form, date, accession, items: ''}] newest first (Finnhub lists forms, not 8-K items)."""
+    start = time.strftime("%Y-%m-%d", time.gmtime(time.mktime(time.strptime(today, "%Y-%m-%d")) - days * 86400))
+    d = finnhub("/stock/filings?symbol=%s&from=%s&to=%s" % (urllib.parse.quote(sym), start, today))
+    if d is None:
+        return None
+    return [{"form": f.get("form", ""), "date": (f.get("filedDate") or "")[:10], "accession": f.get("accessNumber", ""),
+             "items": "", "doc": "", "link": f.get("filingUrl") or f.get("reportUrl")} for f in d]
+
+
+def fh_insider_sells(sym, today, days=30):
+    """(number of open-market sales, shares sold) by insiders in the last `days`."""
+    d = finnhub("/stock/insider-transactions?symbol=%s" % urllib.parse.quote(sym))
+    if not d:
+        return None
+    n, sh = 0, 0
+    for t in d.get("data") or []:
+        dt = t.get("transactionDate") or t.get("filingDate") or ""
+        if t.get("transactionCode") == "S" and dt and _days_between(dt, today) <= days:
+            n += 1
+            sh += abs(t.get("change") or 0)
+    return n, sh
+
+
+def fh_earnings_soon(sym, today, days=7):
+    end = time.strftime("%Y-%m-%d", time.gmtime(time.mktime(time.strptime(today, "%Y-%m-%d")) + days * 86400))
+    d = finnhub("/calendar/earnings?from=%s&to=%s&symbol=%s" % (today, end, urllib.parse.quote(sym)))
+    if not d:
+        return None
+    cal = d.get("earningsCalendar") or []
+    return cal[0].get("date") if cal else None

@@ -23,7 +23,10 @@ ALLOWED_HOSTS = frozenset({
     "data.sec.gov", "www.sec.gov", "efts.sec.gov",
     "api.stocktwits.com",
     "news.google.com",
+    "finnhub.io",
 })
+# Free Finnhub plans allow 60 calls a minute: keep well under it.
+HOST_PAUSE = {"finnhub.io": 1.1}
 # Never reachable from this package, whatever ALLOWED_HOSTS says.
 FORBIDDEN_HOSTS = frozenset({"paper-api.alpaca.markets", "api.alpaca.markets",
                              "broker-api.alpaca.markets", "broker-api.sandbox.alpaca.markets"})
@@ -95,7 +98,7 @@ def get(url, headers=None, timeout=20):
                 os.makedirs(_state["record"], exist_ok=True)
                 with open(os.path.join(_state["record"], _key(url) + ".json"), "w", encoding="utf-8") as fh:
                     json.dump({"url": url, "body": body}, fh)
-            _state["sleep"](PAUSE)
+            _state["sleep"](HOST_PAUSE.get(host, PAUSE))
             return body
         except urllib.error.HTTPError as e:
             last = "HTTP %d from %s" % (e.code, host)

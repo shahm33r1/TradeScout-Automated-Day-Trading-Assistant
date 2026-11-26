@@ -338,6 +338,48 @@ class AlertsAndTracking(unittest.TestCase):
         self.assertAlmostEqual(e["max_drawdown_pct"], -5.0)
 
 
+class Dilution(unittest.TestCase):
+    """dilution.check with Finnhub-style data, all sources stubbed (no network)."""
+
+    def run_check(self, filings, sells=(0, 0)):
+        from early_momentum import data as D, dilution as DIL
+        saved = {k: getattr(D, k) for k in ("sec_user_agent", "fh_filings", "fh_insider_sells", "fh_profile", "fh_earnings_soon")}
+        try:
+            D.sec_user_agent = lambda: None
+            D.fh_filings = lambda sym, today, days=365: filings
+            D.fh_insider_sells = lambda sym, today, days=30: sells
+            D.fh_profile = lambda sym: None
+            D.fh_earnings_soon = lambda sym, today, days=7: None
+            return DIL.check("TEST", "2026-11-25", halts={})
+        finally:
+            for k, v in saved.items():
+                setattr(D, k, v)
+
+    def test_clean_company_is_low(self):
+        self.assertEqual(self.run_check([{"form": "10-Q", "date": "2026-11-10"}])["level"], "low")
+
+    def test_recent_prospectus_is_high(self):
+        r = self.run_check([{"form": "424B5", "date": "2026-11-15"}])
+        self.assertEqual(r["level"], "high")
+
+    def test_offering_history_is_flagged(self):
+        r = self.run_check([{"form": "S-1", "date": "2026-05-01"}, {"form": "424B4", "date": "2026-06-01"}])
+        self.assertEqual(r["level"], "moderate")
+        self.assertTrue(any("history of raising money" in f["what"] for f in r["flags"]))
+
+    def test_registration_effective_is_high(self):
+        self.assertEqual(self.run_check([{"form": "EFFECT", "date": "2026-11-20"}])["level"], "high")
+
+    def test_insider_selling_is_flagged(self):
+        r = self.run_check([], sells=(2, 50000))
+        self.assertTrue(any("insider" in f["what"] for f in r["flags"]))
+
+    def test_no_filings_source_is_unknown_and_said(self):
+        r = self.run_check(None, sells=None)
+        self.assertEqual(r["level"], "unknown")
+        self.assertTrue(any("NOT checked" in n for n in r["notes"]))
+
+
 class Levels(unittest.TestCase):
     def test_levels_are_information_only_and_consistent(self):
         snap = snap_stub(price=2.95, premarket_high=3.10, vwap=2.80,

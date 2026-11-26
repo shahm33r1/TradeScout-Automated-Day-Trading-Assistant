@@ -156,7 +156,8 @@ def research(cfg, sym, name, now_utc, now_et, st, scr, halts):
     fresh = cache.get("news_at")
     if not fresh or (now_et - datetime.datetime.strptime(fresh, "%Y-%m-%d %H:%M")).total_seconds() > cfg["stage2"]["news_refresh_minutes"] * 60:
         items = []
-        for fn in (lambda: D.yahoo_headlines(sym), lambda: D.google_news(sym, name)):
+        for fn in (lambda: D.yahoo_headlines(sym), lambda: D.google_news(sym, name),
+                   lambda: D.fh_news(sym, now_et.date().isoformat())):
             try:
                 items += fn()
             except Exception:
@@ -253,7 +254,15 @@ def scan_pass(cfg, now_utc, now_et, log=print, replay=False):
             cat, dil, social = None, {"level": "unknown", "flags": [], "checked": [], "notes": ["not researched this pass (lower preliminary score)"]}, None
         so = (dil or {}).get("shares_outstanding") or {}
         shares_out = so.get("shares") if so else q.get("sharesOutstanding")
-        mcap = q.get("marketCap") or (shares_out * snap["price"] if shares_out else None)
+        share_note = None
+        ref_cap = q.get("marketCap") or (so.get("market_cap") if so else None)
+        if shares_out and ref_cap and snap["price"]:
+            ratio = shares_out * snap["price"] / ref_cap
+            if not (0.5 <= ratio <= 2.0):
+                share_note = "shares outstanding %s rejected: does not match market cap / price (off by %.0fx)" % (
+                    "{:,}".format(int(shares_out)), max(ratio, 1 / ratio))
+                shares_out, so = None, dict(so, shares=None) if so else so
+        mcap = q.get("marketCap") or (so.get("market_cap") if so else None) or (shares_out * snap["price"] if shares_out else None)
         spread = None
         if not replay and q.get("bid") and q.get("ask") and q["ask"] >= q["bid"] > 0:
             spread = (q["ask"] - q["bid"]) / ((q["ask"] + q["bid"]) / 2) * 100
@@ -270,13 +279,17 @@ def scan_pass(cfg, now_utc, now_et, log=print, replay=False):
             data_notes.append("STALE: last bar is %d minutes old" % stale_min)
         if spread is None:
             data_notes.append("bid-ask spread: unknown")
+        if share_note:
+            data_notes.append(share_note)
         if snap.get("block_prints"):
             data_notes.append("block print(s) at %s: large flat-price prints capped when measuring relative volume" % ", ".join(snap["block_prints"]))
         rec = {
             "ticker": sym, "name": snap["name"], "price": snap["price"], "as_of": snap["as_of"],
             "session": snap["session"], "change_pct": snap["change_pct"],
             "premarket_change_pct": snap["premarket_change_pct"], "move_pct": move,
-            "market_cap": mcap, "market_cap_source": "Yahoo screener" if q.get("marketCap") else ("price x SEC shares outstanding" if mcap else None),
+            "market_cap": mcap, "market_cap_source": ("Yahoo screener" if q.get("marketCap") else
+                                                      "Finnhub profile" if so and so.get("market_cap") else
+                                                      "price x shares outstanding" if mcap else None),
             "float_shares": None, "shares_outstanding": shares_out,
             "rvol": snap["rvol"], "volume_today": snap["volume_today"], "volume_accel": snap["volume_accel"],
             "vwap": snap["vwap"], "premarket_high": snap["premarket_high"], "prev_close": snap["prev_close"],
@@ -304,10 +317,13 @@ def scan_pass(cfg, now_utc, now_et, log=print, replay=False):
     doc = {"label": BANNER, "date": day, "as_of": now_et.strftime("%Y-%m-%d %H:%M"), "window": window(now_et),
            "candidates": len(cand_doc["candidates"]), "stage1_fetched": fetched, "shortlisted": len(pick),
            "analyzed": len(snaps), "requests": net.calls() - calls0,
-           "sec_checked": bool(D.sec_user_agent()),
+           "sec_checked": bool(D.sec_user_agent()) or bool(D.finnhub_status()["available"]),
            "data_sources": {"prices": "Yahoo Finance (free, unofficial, can lag; no premarket volume)",
                             "float": "not available (no float provider key)",
-                            "filings": "SEC EDGAR" if D.sec_user_agent() else "SEC EDGAR NOT checked: SEC_USER_AGENT not set",
+                            "filings": ("SEC EDGAR" if D.sec_user_agent() else
+                                        "Finnhub filing list (8-K item numbers not available)" if D.finnhub_status()["available"] else
+                                        "NOT checked: set SEC_USER_AGENT or save a Finnhub key"),
+                            "finnhub": "available" if D.finnhub_status()["available"] else "not available (%s)" % (D.finnhub_status()["why"] or "no key"),
                             "news": "Yahoo Finance RSS, Google News RSS", "social": "StockTwits", "halts": "Nasdaq Trader"},
            "results": [r for r in records if r["tier"] != "weak" or r["ticker"] in det
                        or (r["session"] == "premarket" and r["score"] >= cfg["premarket_show_min_score"])],
@@ -326,7 +342,7 @@ def scan_pass(cfg, now_utc, now_et, log=print, replay=False):
         write_json(_p("alerts-pending.json"), pending)
     log("%s %s ET [%s]: %d candidates, %d shortlisted, %d analyzed, %d shown, %d new alerts, %d requests. %s" % (
         BANNER, doc["as_of"], doc["window"], doc["candidates"], len(pick), len(snaps), len(doc["results"]),
-        len(new_alerts), doc["requests"], "" if doc["sec_checked"] else "SEC filings not checked (SEC_USER_AGENT unset)."))
+        len(new_alerts), doc["requests"], "" if doc["sec_checked"] else "Filings not checked (no SEC_USER_AGENT, no Finnhub key)."))
     return doc, new_alerts
 
 
