@@ -1,0 +1,43 @@
+{
+  "_note": "Early Momentum Scanner settings. RESEARCH ONLY: nothing here places, changes or cancels an order. Each criterion has a strong range and a wider borderline range; a stock outside one range is marked borderline, never rejected for that alone.",
+  "criteria": {
+    "price":           {"strong": [1.0, 20.0],   "borderline": [0.8, 25.0]},
+    "float_shares":    {"strong": [0, 20000000], "borderline": [0, 40000000]},
+    "rvol":            {"strong": [3.0, null],   "borderline": [2.0, null]},
+    "premarket_pct":   {"strong": [3.0, 15.0],   "borderline": [1.5, 25.0]},
+    "market_cap":      {"strong": [0, 300000000], "borderline": [0, 2000000000]}
+  },
+  "universe": {
+    "min_price": 0.8,
+    "max_price": 25.0,
+    "min_avg_volume": 50000
+  },
+  "stage1": {
+    "shortlist": 40,
+    "min_change_pct": -2.0,
+    "max_change_pct": 80.0
+  },
+  "stage2": {
+    "research_top": 15,
+    "news_refresh_minutes": 30
+  },
+  "late_move_pct": 30.0,
+  "extended_move_pct": 60.0,
+  "scan_interval_minutes": {
+    "premarket": 5,
+    "opening": 5,
+    "intraday": 10
+  },
+  "alerts": {
+    "min_score": 50,
+    "score_jump": 10,
+    "approach_pct": 2.0,
+    "premarket_min_score": 25,
+    "premarket_min_catalyst": 10,
+    "extreme_rvol": 5.0,
+    "extreme_rvol_min_score": 35
+  },
+  "sticky_rvol": 2.0,
+  "premarket_show_min_score": 20,
+  "tiers": {"strong": 70, "watch": 50, "borderline": 35}
+}
