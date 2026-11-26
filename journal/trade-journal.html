@@ -23,6 +23,7 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-
 .wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 48px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: grid; gap: 28px; }
+.wrap > *, .em > *, section { min-width: 0; }
 header h1 { font-size: 1.6rem; font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
 header p { margin: 4px 0 0; color: var(--muted); max-width: 65ch; }
 .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 500; }
@@ -58,6 +59,39 @@ tr.analysis td strong { font-weight: 600; }
 .tag { font-family: var(--mono); font-size: 0.75rem; border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--muted); }
 .empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 8px; padding: 18px; color: var(--muted); }
 footer { color: var(--muted); font-size: 0.85rem; max-width: 65ch; }
+/* Early Momentum Opportunities */
+.em { display: grid; gap: 14px; border-top: 1px solid var(--line); padding-top: 22px; }
+.em-banner { background: var(--loss-bg); color: var(--loss); border: 1px solid var(--loss); border-radius: 8px;
+  padding: 10px 14px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 0.85rem; }
+.em-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; }
+.em-head h2 { margin: 0; letter-spacing: 0.04em; }
+.em-meta { color: var(--muted); font-size: 0.85rem; }
+.em-filters { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.em-filters label { display: grid; gap: 4px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.em-filters input, .em-filters select { font: inherit; font-size: 0.9rem; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; width: 92px; }
+.em-filters select { width: auto; }
+.em-filters input:focus-visible, .em-filters select:focus-visible, .em-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.em-row { cursor: pointer; }
+.em-row:hover td { background: var(--bg); }
+.score { display: inline-block; min-width: 2.4em; text-align: center; font-family: var(--mono); font-weight: 500;
+  border-radius: 5px; padding: 1px 6px; }
+.score.strong { background: var(--gain-bg); color: var(--gain); }
+.score.watch { background: var(--watch-bg); color: var(--watch); }
+.score.borderline, .score.weak { background: var(--line); color: var(--muted); }
+.dil { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.dil.high { color: var(--loss); } .dil.moderate { color: var(--watch); } .dil.low { color: var(--gain); } .dil.unknown { color: var(--muted); }
+.em-detail td { background: var(--bg); font-size: 0.88rem; }
+.em-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.em-grid > div { min-width: 0; display: grid; gap: 4px; align-content: start; }
+.em-grid ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.em-grid a { color: var(--accent); overflow-wrap: anywhere; }
+.em-why { color: var(--muted); font-size: 0.85rem; max-width: 34ch; }
+#em-wrap table { min-width: 1500px; }
+#em-wrap td.em-why { min-width: 260px; }
+#em-wrap td:nth-child(2) { min-width: 150px; }
+#t-wrap table { min-width: 760px; }
 </style>
 
 <div class="wrap">
@@ -72,6 +106,55 @@ footer { color: var(--muted); font-size: 0.85rem; max-width: 65ch; }
     <div><span class="label">Win rate</span><span class="v" id="s-rate">–</span></div>
     <div><span class="label">Total P&amp;L</span><span class="v" id="s-pnl">$0.00</span></div>
   </div>
+
+  <section class="em" id="early-momentum" aria-labelledby="em-title">
+    <div class="em-banner" role="note">RESEARCH ONLY – NO AUTOMATED EXECUTION. The scanner never places, changes or cancels an order. You decide every trade.</div>
+    <div class="em-head">
+      <h2 id="em-title">EARLY MOMENTUM OPPORTUNITIES</h2>
+      <span class="em-meta" id="em-meta">Waiting for the scanner's first pass of the day.</span>
+    </div>
+    <div class="em-filters" role="group" aria-label="Filters">
+      <label for="f-pmin">Price min<input id="f-pmin" type="number" step="0.01" value="1"></label>
+      <label for="f-pmax">Price max<input id="f-pmax" type="number" step="0.01" value="20"></label>
+      <label for="f-float">Float / shares max (M)<input id="f-float" type="number" step="1" placeholder="any"></label>
+      <label for="f-rvol">Rel. volume min<input id="f-rvol" type="number" step="0.5" placeholder="any"></label>
+      <label for="f-chgmin">% change min<input id="f-chgmin" type="number" step="1" placeholder="any"></label>
+      <label for="f-chgmax">% change max<input id="f-chgmax" type="number" step="1" placeholder="any"></label>
+      <label for="f-score">Score min<input id="f-score" type="number" step="5" value="0"></label>
+      <label for="f-sort">Sort by<select id="f-sort"><option value="score">Highest score</option><option value="rvol">Strongest relative volume</option></select></label>
+    </div>
+    <div id="em-empty" class="empty">No opportunities yet today. The scanner runs on trading days from 4:05 AM to 4:00 PM New York time and fills this table as it finds stocks.</div>
+    <div class="tablewrap" id="em-wrap" hidden>
+      <table aria-describedby="em-meta">
+        <thead><tr>
+          <th>Score</th><th>Stock</th><th class="r">Price</th><th class="r">Day %</th><th class="r">Pre %</th>
+          <th class="r">Mkt cap</th><th class="r">Float</th><th class="r">Rel. vol</th><th class="r">Volume</th>
+          <th class="r">VWAP</th><th class="r">Pre high</th><th>Resistance</th><th>Catalyst</th><th>Dilution</th><th>Why flagged</th>
+        </tr></thead>
+        <tbody id="em-rows"></tbody>
+      </table>
+    </div>
+    <div>
+      <h2>Is the scanner early?</h2>
+      <p class="note">Every flagged stock is tracked from the moment it was first detected. Prices from Yahoo Finance, which can lag.</p>
+      <div class="strip" aria-label="Scanner results">
+        <div><span class="label">Stocks tracked</span><span class="v" id="t-n">0</span></div>
+        <div><span class="label">Avg after 15 min</span><span class="v" id="t-15">–</span></div>
+        <div><span class="label">Avg after 60 min</span><span class="v" id="t-60">–</span></div>
+        <div><span class="label">Reached +10%</span><span class="v" id="t-10">–</span></div>
+        <div><span class="label">Reached +30%</span><span class="v" id="t-30">–</span></div>
+        <div><span class="label">Avg worst drop</span><span class="v" id="t-dd">–</span></div>
+      </div>
+      <div class="tablewrap" id="t-wrap" hidden style="margin-top: 10px">
+        <table>
+          <thead><tr><th>Detected</th><th>Stock</th><th class="r">Score</th><th class="r">Price then</th>
+            <th class="r">+5 min</th><th class="r">+15 min</th><th class="r">+30 min</th><th class="r">+60 min</th>
+            <th class="r">Best</th><th class="r">Worst</th></tr></thead>
+          <tbody id="t-rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 
   <section>
     <h2>Rules the daily run follows</h2>
@@ -169,5 +252,135 @@ function renderLessons(docs) {
   const fail = (e) => { clearTimeout(timer); $("status").textContent = "Could not read the journal (" + (e && e.code ? e.code : "error") + "). Reopen the page to try again."; };
   db.collection("trades").onSnapshot(s => { renderTrades(s.docs); done(); }, fail);
   db.collection("lessons").onSnapshot(s => { renderLessons(s.docs); done(); }, fail);
+  startMomentum(db);
 })();
+
+// ---------------------------------------------------------------- Early Momentum (research only)
+const EM = { rows: [], meta: null };
+const pct = (v) => (v == null ? "–" : (v > 0 ? "+" : "") + Number(v).toFixed(1) + "%");
+const px = (v) => (v == null ? "–" : Number(v) < 1 ? Number(v).toFixed(4) : Number(v).toFixed(2));
+const big = (v) => { if (v == null) return "–"; const n = Number(v); return n >= 1e9 ? (n / 1e9).toFixed(2) + "B" : n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(0) + "K" : String(n); };
+const safeLink = (href, text) => { if (typeof href === "string" && href.startsWith("https://")) { const a = el("a", null, text); a.href = href; a.target = "_blank"; a.rel = "noopener noreferrer"; return a; } return el("span", null, text); };
+const fnum = (id) => { const v = $(id).value; return v === "" ? null : Number(v); };
+
+function emFiltered() {
+  const pmin = fnum("f-pmin"), pmax = fnum("f-pmax"), fmax = fnum("f-float"), rmin = fnum("f-rvol"),
+        cmin = fnum("f-chgmin"), cmax = fnum("f-chgmax"), smin = fnum("f-score");
+  const rows = EM.rows.filter(r => {
+    const move = r.session === "premarket" ? r.premarket_change_pct : r.change_pct;
+    const supply = r.float_shares != null ? r.float_shares : r.shares_outstanding;
+    if (pmin != null && r.price < pmin) return false;
+    if (pmax != null && r.price > pmax) return false;
+    if (fmax != null && (supply == null || supply > fmax * 1e6)) return false;
+    if (rmin != null && (r.rvol == null || r.rvol < rmin)) return false;
+    if (cmin != null && (move == null || move < cmin)) return false;
+    if (cmax != null && (move == null || move > cmax)) return false;
+    if (smin != null && r.score < smin) return false;
+    return true;
+  });
+  const by = $("f-sort").value;
+  rows.sort((a, b) => by === "rvol" ? ((b.rvol || 0) - (a.rvol || 0)) || (b.score - a.score) : (b.score - a.score) || ((b.rvol || 0) - (a.rvol || 0)));
+  return rows;
+}
+
+function list(title, items) {
+  const box = el("div"); box.append(el("span", "label", title));
+  const ul = el("ul");
+  (items.length ? items : ["–"]).forEach(x => { const li = el("li"); if (x instanceof Node) li.append(x); else li.textContent = String(x); ul.append(li); });
+  box.append(ul); return box;
+}
+
+function emDetail(r) {
+  const p = r.plan || {};
+  const grid = el("div", "em-grid");
+  grid.append(list("Score reasons", (r.reasons || []).concat((r.penalties || []).map(x => x.why + ": " + x.points), (r.notes || []))));
+  grid.append(list("Reference levels (information only)", [
+    "Key level: " + (p.key_level ? p.key_level.name + " " + px(p.key_level.price) : "–"),
+    "Entry zone: " + (p.entry_zone ? px(p.entry_zone[0]) + " – " + px(p.entry_zone[1]) : "–"),
+    "Confirmation: " + (p.breakout_confirmation || "–"),
+    "Stop reference: " + px(p.stop_reference),
+    "Target 1: " + px(p.target_1) + (p.reward_risk_1 != null ? " (" + p.reward_risk_1 + "R)" : ""),
+    "Target 2: " + px(p.target_2) + (p.reward_risk_2 != null ? " (" + p.reward_risk_2 + "R)" : ""),
+    "Invalidated by: " + (p.invalidation || "–"),
+    "Support: " + ((r.support || []).map(s => s.name + " " + px(s.price)).join(", ") || "–"),
+  ]));
+  grid.append(list("Reasons to stay out", p.reasons_to_avoid || []));
+  const news = [];
+  if (r.catalyst) news.push(safeLink(r.catalyst.link, r.catalyst.category + ": " + r.catalyst.title + (r.catalyst.outlet ? " (" + r.catalyst.outlet + ")" : "")));
+  (r.news || []).slice(1).forEach(n => news.push(safeLink(n.link, n.category + ": " + n.title)));
+  (r.negative_news || []).forEach(n => news.push(safeLink(n.link, "NEGATIVE " + n.category + ": " + n.title)));
+  if (r.social) news.push("StockTwits last hour: " + r.social.posts_last_hour + " posts, " + r.social.bullish + " bullish / " + r.social.bearish + " bearish");
+  grid.append(list("News and catalyst (headlines are leads: read the story)", news));
+  const dil = (r.dilution && r.dilution.flags || []).map(f => f.link ? safeLink(f.link, f.severity.toUpperCase() + ": " + f.what) : f.severity.toUpperCase() + ": " + f.what);
+  grid.append(list("Dilution and risk (" + ((r.dilution && r.dilution.level) || "unknown") + ")", dil.concat((r.dilution && r.dilution.notes) || [])));
+  grid.append(list("Data notes", (r.data_notes || []).concat(["As of " + r.as_of + " ET (" + r.session + ")", "Match: " + r.match])));
+  return grid;
+}
+
+function renderMomentum() {
+  const rows = emFiltered();
+  const tb = $("em-rows"); tb.replaceChildren();
+  for (const r of rows) {
+    const tr = el("tr", "em-row"); tr.tabIndex = 0; tr.setAttribute("aria-expanded", "false");
+    const sc = el("td"); sc.append(el("span", "score " + (r.tier || "weak"), r.score)); tr.append(sc);
+    const nm = el("td"); nm.append(el("strong", null, r.ticker)); nm.append(el("div", "em-why", r.name || "")); tr.append(nm);
+    const supply = r.float_shares != null ? big(r.float_shares) : (r.shares_outstanding != null ? "≤" + big(r.shares_outstanding) : "unknown");
+    tr.append(el("td", "r num", px(r.price)), el("td", "r num", pct(r.change_pct)), el("td", "r num", pct(r.premarket_change_pct)),
+      el("td", "r num", big(r.market_cap)), el("td", "r num", supply), el("td", "r num", r.rvol == null ? "–" : Number(r.rvol).toFixed(1) + "x"),
+      el("td", "r num", big(r.volume_today)), el("td", "r num", px(r.vwap)), el("td", "r num", px(r.premarket_high)),
+      el("td", "num", (r.resistance || []).slice(0, 2).map(x => px(x.price)).join(", ") || "–"));
+    const cat = el("td"); cat.append(r.catalyst ? safeLink(r.catalyst.link, r.catalyst.category) : el("span", "em-why", "none found")); tr.append(cat);
+    const lvl = (r.dilution && r.dilution.level) || "unknown";
+    tr.append(el("td", "dil " + lvl, lvl));
+    tr.append(el("td", "em-why", (r.reasons || []).slice(0, 2).join("; ")));
+    const dr = el("tr", "em-detail"); dr.hidden = true; const dtd = el("td"); dtd.colSpan = 15; dtd.append(emDetail(r)); dr.append(dtd);
+    const toggle = () => { dr.hidden = !dr.hidden; tr.setAttribute("aria-expanded", String(!dr.hidden)); };
+    tr.addEventListener("click", toggle);
+    tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+    tb.append(tr, dr);
+  }
+  $("em-empty").hidden = rows.length > 0; $("em-wrap").hidden = rows.length === 0;
+  if (EM.rows.length && !rows.length) $("em-empty").textContent = "No stocks match these filters. Loosen a filter to see more.";
+}
+
+function renderMeta() {
+  const m = EM.meta; if (!m) return;
+  $("em-meta").textContent = "Last scan " + m.as_of + " ET (" + m.window + "): " + m.analyzed + " analyzed of " + m.candidates +
+    " small-cap candidates. " + (m.sec_checked ? "" : "SEC filings not checked yet. ") + "Prices: Yahoo Finance, can lag; float unknown.";
+}
+
+function renderTracking(items) {
+  const rows = items.slice().sort((a, b) => String(b.first_detected).localeCompare(String(a.first_detected)));
+  const val = (r, k) => r.checkpoints && r.checkpoints[k] ? r.checkpoints[k].pct : null;
+  const avg = (k) => { const v = rows.map(r => val(r, k)).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const rate = (t) => rows.length ? Math.round(100 * rows.filter(r => r.max_gain_pct >= t).length / rows.length) + "%" : "–";
+  $("t-n").textContent = rows.length;
+  $("t-15").textContent = pct(avg("15m")); $("t-60").textContent = pct(avg("60m"));
+  $("t-10").textContent = rate(10); $("t-30").textContent = rate(30);
+  $("t-dd").textContent = rows.length ? pct(rows.reduce((a, r) => a + (r.max_drawdown_pct || 0), 0) / rows.length) : "–";
+  const tb = $("t-rows"); tb.replaceChildren();
+  rows.slice(0, 40).forEach(r => {
+    const tr = el("tr");
+    tr.append(el("td", "num", r.first_detected), el("td", null, r.ticker), el("td", "r num", r.score_at_detection),
+      el("td", "r num", px(r.price_at_detection)), el("td", "r num", pct(val(r, "5m"))), el("td", "r num", pct(val(r, "15m"))),
+      el("td", "r num", pct(val(r, "30m"))), el("td", "r num", pct(val(r, "60m"))),
+      el("td", "r num pos", pct(r.max_gain_pct)), el("td", "r num neg", pct(r.max_drawdown_pct)));
+    tb.append(tr);
+  });
+  $("t-wrap").hidden = rows.length === 0;
+}
+
+function startMomentum(db) {
+  ["f-pmin", "f-pmax", "f-float", "f-rvol", "f-chgmin", "f-chgmax", "f-score", "f-sort"].forEach(id => $(id).addEventListener("input", renderMomentum));
+  db.doc("momentum_meta/latest").onSnapshot(snap => {
+    EM.meta = snap.data() || null;
+    EM.rows = (EM.meta && Array.isArray(EM.meta.results)) ? EM.meta.results : [];
+    renderMeta(); renderMomentum();
+  }, () => { $("em-meta").textContent = "Could not read the scanner results. Reopen the page to try again."; });
+  db.collection("momentum_tracking").onSnapshot(s => {
+    const all = [];
+    s.docs.forEach(d => { const v = d.data(); (v && Array.isArray(v.detections) ? v.detections : []).forEach(x => all.push(x)); });
+    renderTracking(all);
+  }, () => {});
+}
 </script>
