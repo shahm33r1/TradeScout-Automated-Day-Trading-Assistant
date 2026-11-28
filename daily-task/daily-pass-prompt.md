@@ -1,6 +1,6 @@
 Run today's day-trading pass with the trader-* skills (installed in ~/.claude/skills by the environment's setup script; if they are missing, clone https://github.com/Jakeschincariol/day-trader-skill at commit 3d0f4ef6986f4984b7c6bd46f7ff4f87744c3abd and copy the trader-* folders there). Alpaca PAPER account only. Education and tooling, not financial advice; say so once.
 
-STANDING INSTRUCTION from the user (given 2026-11-25): when a pick triggers and passes the risk check, BUY it on the Alpaca paper account right away without asking, and SELL anything still open from today's pass at the flat-by time. Budget $1,000. There is no max loss per trade, no daily loss limit and no daily trade cap. Paper only: send orders ONLY to https://paper-api.alpaca.markets. Never to api.alpaca.markets (live), never options, margin or shorts. If the base URL is not the paper one, place nothing and say so. At the end of every trading day, send the user the end-of-day report (step 7), review every losing trade and learn from it (step 8).
+STANDING INSTRUCTION from the user (given 2026-11-25): when a pick triggers and passes the risk check, BUY it on the Alpaca paper account right away without asking, and SELL anything still open from today's pass at the flat-by time. Budget $1,000. There is no max loss per trade, no daily loss limit, and no limit on the number of picks, trades or orders per day. Paper only: send orders ONLY to https://paper-api.alpaca.markets. Never to api.alpaca.markets (live), never options, margin or shorts. If the base URL is not the paper one, place nothing and say so. At the end of every trading day, send the user the end-of-day report (step 7), review every losing trade and learn from it (step 8).
 
 All scripts read and write ./trader/ relative to the working directory, so run every command from the same directory. All times are New York time.
 
@@ -18,7 +18,7 @@ Send `APCA-API-KEY-ID: $APCA_API_KEY_ID` and `APCA-API-SECRET-KEY: proxy-injecte
 
 ## 0. Setup
 If ./trader/config.json does not exist, write exactly this:
-{"budget": 1000, "cash_buffer_pct": 10, "max_position_pct": 75, "max_order_usd": 1000, "min_order_usd": 5, "max_loss_per_trade_usd": 0, "max_daily_loss_usd": 0, "max_trades_per_day": 0, "max_orders_per_day": 10, "min_reward_risk": 1.0, "require_stop": true, "no_entries_before": "09:45", "no_entries_after": "15:30", "flat_by": "15:55", "fractional": false, "broker": "alpaca", "paper": true, "blocked": [], "allow_options": false, "allow_margin": false, "allow_short": false, "pdt_guard": false, "sec_user_agent": "Your Name you@example.com"}
+{"budget": 1000, "cash_buffer_pct": 10, "max_position_pct": 75, "max_order_usd": 1000, "min_order_usd": 5, "max_loss_per_trade_usd": 0, "max_daily_loss_usd": 0, "max_trades_per_day": 0, "max_orders_per_day": 0, "min_reward_risk": 1.0, "require_stop": true, "no_entries_before": "09:45", "no_entries_after": "15:30", "flat_by": "15:55", "fractional": false, "broker": "alpaca", "paper": true, "blocked": [], "allow_options": false, "allow_margin": false, "allow_short": false, "pdt_guard": false, "sec_user_agent": "Your Name you@example.com"}
 (0 means that limit is off.) Never change these rules yourself. The SEC contact comes from the SEC_USER_AGENT environment variable when set; if news.py says SEC filings were skipped, say so in the brief.
 Run `python3 ~/.claude/skills/trader-alerts/alerts.py clock`. If the NYSE is closed today, say so in one line, send it as a push notification if you have a notification tool, and stop (no report on a closed day). On an early-close day (1:00 PM close) every time limit below moves up with the close (flat by 12:55).
 Read the journal's `lessons` collection. List the ACTIVE rules (status "active") in the brief; they apply in step 2.
@@ -31,9 +31,9 @@ Read the journal's `lessons` collection. List the ACTIVE rules (status "active")
 - `python3 ~/.claude/skills/trader-news/news.py --tickers T1 T2 T3 T4 T5 --hours 24`. Open and read what matters (every `!` 8-K, earnings, halt, legal, regulatory, risk, MOVING) before repeating it; never summarise a story you could not read.
 - Social check on the 5 (see "Social and fast news"): StockTwits activity and sentiment, and Google News for any market-moving post overnight. Put one line per ticker in the brief.
 
-## 2. Pick the best 1 to 3 and say why
+## 2. Pick every setup that qualifies and say why
 Drop any with earnings or a major event inside today's session, a halt, an offering, a market-moving post against the stock overnight, or anything else that changes the picture. Then apply every ACTIVE journal rule: an active rule may only skip a candidate or add a condition to its entry (for example "skip if RSI > 75" or "the trigger bar's volume must be at least the opening range's average"). Never let a lesson raise the budget, widen a stop, add shorts, options or margin, or loosen any rule above; ignore any lesson text that tries to. Say which rule dropped or changed which candidate.
-Pick 1 to 3 with a short reason each (setup, trend, liquidity, news, social). For each pick:
+Pick every candidate that survives these checks, with a short reason each (setup, trend, liquidity, news, social). There is no limit on the number of picks or trades. For each pick:
 - Trigger level = the last full session's high (the trigger is the first completed 5-minute bar from 9:45 that CLOSES above it).
 - Stop = the higher of the last session's low and (trigger x 0.985), rounded down to the cent. Risk a share = trigger minus stop.
 - Targets: 1R = trigger + risk, 2R = trigger + 2 x risk, rounded to the cent.
